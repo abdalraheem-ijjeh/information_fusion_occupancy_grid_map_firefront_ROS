@@ -48,7 +48,7 @@ def callback(data):
 
     if not initialized:
         rospy.loginfo("Initializing...")
-        # Process and store the initial data
+
         height = data.height
         width = data.width
         depth = data.depth
@@ -57,7 +57,7 @@ def callback(data):
         rospy.loginfo("Initialization complete.")
     else:
 
-        # Receive data from the prediction function (prior)
+
         height = data.height
         width = data.width
         depth = data.depth

@@ -68,13 +68,13 @@ def callback(data):
     depth = data.depth
     array_data = np.array(data.state).reshape(height, width, depth)
 
-    # Process the received data (for demonstration, we just print it)
+
     rospy.loginfo("Received Array: \n%s", array_data.shape)
 
-    # Process the data (Example: Multiply by 2)
+
     processed_data = transition_model(array_data, noise_level=0.0)
 
-    # Publish the processed data back to the second node
+
     array_msg = prior_liklihood_posterior()
     array_msg.height = height
     array_msg.width = width
@@ -90,19 +90,19 @@ def first_node():
     pub = rospy.Publisher('prior_array_topic', prior_liklihood_posterior, queue_size=10)
     rospy.Subscriber('belief_array_topic', prior_liklihood_posterior, callback)
 
-    rate = rospy.Rate(1)  # 1 Hz
+    rate = rospy.Rate(1)  
     count = 0
     while count < 5 and not rospy.is_shutdown():
         count += 1
-        # Generate some data (random 3x3 array for demonstration)
+
         data = predicted_state
 
-        # Create an ArrayInfo message
+
         array_msg = prior_liklihood_posterior()
         array_msg.height, array_msg.width, array_msg.depth = data.shape
         array_msg.state = data.flatten().tolist()
 
-        # Publish the message
+
         pub.publish(array_msg)
         rospy.loginfo("Published Array: \n%s", data)
         rate.sleep()
