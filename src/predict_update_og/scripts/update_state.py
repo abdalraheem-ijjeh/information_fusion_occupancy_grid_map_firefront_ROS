@@ -4,6 +4,9 @@ import rospy
 import numpy as np
 from predict_update_og.msg import prior_liklihood_posterior, measurement_msg
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+import cv2
+from cv_bridge import CvBridge
+
 
 import matplotlib.pyplot as plt
 
@@ -14,6 +17,9 @@ pub = None
 # global GRID_SIZE
 GRID_SIZE = None
 resolution = 1
+
+bridge = CvBridge()
+
 
 
 ###################################################################################
@@ -49,9 +55,17 @@ data2 = None
 ###################################################################################
 def callback1(data):
     global data1
-    data1 = data.Image
-    msg_header = data.Header
+    bridge = CvBridge()
+    
+    data1 = bridge.imgmsg_to_cv2(data.image, desired_encoding='passthrough')
+    msg_header = data.header
     msg_annotation = data.json_annotation
+
+    data1 = np.asarray(data1)   
+
+    rospy.loginfo("Received measurements: \n%s", data1.shape)
+
+    data1 = np.expand_dims(data1, axis= -1)   
     process_and_publish_result()
 
 
@@ -66,7 +80,7 @@ def callback2(data):
         height = data.height
         width = data.width
         depth = data.depth
-        data2 = np.zeros((height, width, depth))  # Initialize with zeros
+        data2 = np.ones((height, width, depth))  * 0.5 # Initialize with zeros
         initialized = True
         rospy.loginfo("Initialization complete.")
     else:
@@ -76,40 +90,20 @@ def callback2(data):
         width = data.width
         depth = data.depth
         data2 = np.array(data.state).reshape(height, width, depth)
-        rospy.loginfo("Received Array: \n%s", data2.shape)
+        rospy.loginfo("Received prior: \n%s", data2.shape)
 
         likelihood = data2
 
         GRID_SIZE = (height, width, depth)
         process_and_publish_result()
-        #posterior = update_measurement(data2, image_measurement)
-	
-        #processed_data.append(posterior)
-
-        #####################################################################
-        #plt.imshow(posterior[:, :, -1])
-        #plt.show()
-        #plt.close()
-        #####################################################################
-        # Publish the processed data back to the prediction function (to predict next state)
-        #array_msg = prior_liklihood_posterior()
-        #array_msg.height = height
-        #array_msg.width = width
-        #array_msg.depth = depth
-        #array_msg.state = posterior.flatten().tolist()
-        #pub.publish(array_msg)
-        #rospy.loginfo("Published Array: \n%s", posterior.shape)
-
 
 def process_and_publish_result():
     global GRID_SIZE, processed_data, data2
-    if data1 is not None or data2 is not None:
+    if data1 is not None and data2 is not None:
        posterior = update_measurement(data2, data2)
        processed_data.append(posterior)
-       #####################################################################
-       plt.imshow(posterior[:, :, -1])
-       plt.show()
-       plt.close()
+       #####################################################################     
+       rospy.loginfo('Posterior \n%s', posterior[:, :, -1].shape)
        #####################################################################
        # Publish the processed data back to the prediction function (to predict next state)
        array_msg = prior_liklihood_posterior()
@@ -118,7 +112,7 @@ def process_and_publish_result():
        array_msg.depth = data2.shape[2]
        array_msg.state = posterior.flatten().tolist()
        pub.publish(array_msg)
-       rospy.loginfo("Published Array: \n%s", posterior.shape)
+       rospy.loginfo("Published Belief (Posterior): \n%s", posterior.shape)
     
     
 
@@ -135,7 +129,7 @@ def second_node():
     pub = rospy.Publisher('belief_array_topic', prior_liklihood_posterior, queue_size=10)
 
     rate = rospy.Rate(1)  # 1 Hz
-
+    
     # Wait for initialization before starting the cyclic loop
     while not initialized and not rospy.is_shutdown():
         rate.sleep()

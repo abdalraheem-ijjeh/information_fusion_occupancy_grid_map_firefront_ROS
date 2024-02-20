@@ -14,10 +14,10 @@ initial_data = None
 neighbourhood = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 
 # Forest size (number of cells in x and y directions).
-nx, ny = 500, 500
+nx, ny = 400, 400
 # Initialize the forest grid.
 
-predicted_state = np.ones((ny, nx, 2), dtype=np.float16) * 0.3
+predicted_state = np.ones((ny, nx, 2), dtype=np.float16) * 0.5
 
 #######################################################
 radius = 5
@@ -68,10 +68,10 @@ def callback(data):
     depth = data.depth
     array_data = np.array(data.state).reshape(height, width, depth)
 
-    rospy.loginfo("Received Array: \n%s", array_data.shape)
+    rospy.loginfo("Received from the update node: \n%s", array_data.shape)
 
-    processed_data = transition_model(array_data, noise_level=0.0)
-
+    # processed_data = transition_model(array_data, noise_level=0.0)
+    processed_data = array_data
     # Publish the processed data back to the second node
     array_msg = prior_liklihood_posterior()
     array_msg.height = height
@@ -79,7 +79,7 @@ def callback(data):
     array_msg.depth = depth
     array_msg.state = processed_data.flatten().tolist()
     pub.publish(array_msg)
-    rospy.loginfo("Published Array: \n%s", processed_data.shape)
+    rospy.loginfo("Published prior: \n%s", processed_data.shape)
 
 
 def first_node():
@@ -100,7 +100,7 @@ def first_node():
 
         # Publish the message
         pub.publish(array_msg)
-        rospy.loginfo("Published Array: \n%s", data.shape)
+        rospy.loginfo("Published prior: \n%s", data.shape)
         rate.sleep()
 
     while not rospy.is_shutdown():
